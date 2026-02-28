@@ -7,8 +7,13 @@ CLI for Plane project management.
 ```
 plane-cli/
   Cargo.toml
+  config/
+    settings.json        # Base settings (committed)
+    settings.local.json  # Local overrides (git-ignored)
   src/
     main.rs        # CLI entry point (clap derive), subcommand enums, output formatting
+    settings.rs    # Settings struct & layered config loader
+    client.rs      # HTTP client wrapper for Plane API
 ```
 
 ## Key conventions
@@ -34,6 +39,15 @@ cargo build
 cargo run -- <command>
 ```
 
+## Settings
+
+Layered configuration (each layer overrides the previous):
+1. Hardcoded defaults (`Settings::default()`)
+2. `config/settings.json` — base settings
+3. `config/settings.local.json` — local overrides (git-ignored)
+4. Environment variables: `PLANE_API_KEY`, `PLANE_BASE_URL`, `PLANE_WORKSPACE`, `PLANE_TIMEOUT`
+5. CLI arguments (`--api-key`, `--base-url`, `--workspace`, `--timeout`)
+
 ## Dependencies
 
 - `clap` (derive) — CLI parsing
@@ -41,3 +55,5 @@ cargo run -- <command>
 - `anyhow` — error handling
 - `console` — terminal colors/styling
 - `indicatif` — progress spinners
+- `reqwest` (json, rustls-tls) — HTTP client
+- `tokio` (rt-multi-thread, macros) — async runtime
