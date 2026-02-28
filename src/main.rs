@@ -3,8 +3,8 @@ mod settings;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use comfy_table::{presets::UTF8_BORDERS_ONLY, Cell, Color, Table};
 use client::Client;
+use comfy_table::{Cell, Color, Table, presets::UTF8_BORDERS_ONLY};
 use settings::{CliOverrides, Settings};
 
 #[derive(Parser)]
@@ -192,10 +192,9 @@ async fn main() -> Result<()> {
         timeout: cli.timeout,
     })?;
 
-    let workspace = settings
-        .workspace
-        .as_deref()
-        .context("workspace is required — set it via --workspace, PLANE_CLI_WORKSPACE, or config file")?;
+    let workspace = settings.workspace.as_deref().context(
+        "workspace is required — set it via --workspace, PLANE_CLI_WORKSPACE, or config file",
+    )?;
 
     let client = Client::new(&settings, json_mode)?;
 
@@ -223,7 +222,8 @@ async fn main() -> Result<()> {
                     table.set_header(vec![header("Name"), header("Identifier"), header("ID")]);
                     for project in results {
                         table.add_row(vec![
-                            Cell::new(project["name"].as_str().unwrap_or("(unnamed)")).fg(Color::White),
+                            Cell::new(project["name"].as_str().unwrap_or("(unnamed)"))
+                                .fg(Color::White),
                             Cell::new(project["identifier"].as_str().unwrap_or("")),
                             Cell::new(project["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
                         ]);
@@ -235,7 +235,9 @@ async fn main() -> Result<()> {
         Command::States { action } => match action {
             StatesAction::List { project } => {
                 let data = client
-                    .get(&format!("workspaces/{workspace}/projects/{project}/states/"))
+                    .get(&format!(
+                        "workspaces/{workspace}/projects/{project}/states/"
+                    ))
                     .await?;
 
                 if json_mode {
@@ -255,7 +257,8 @@ async fn main() -> Result<()> {
                     table.set_header(vec![header("Name"), header("Group"), header("ID")]);
                     for state in results {
                         table.add_row(vec![
-                            Cell::new(state["name"].as_str().unwrap_or("(unnamed)")).fg(Color::White),
+                            Cell::new(state["name"].as_str().unwrap_or("(unnamed)"))
+                                .fg(Color::White),
                             Cell::new(state["group"].as_str().unwrap_or("")),
                             Cell::new(state["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
                         ]);
@@ -267,7 +270,9 @@ async fn main() -> Result<()> {
         Command::Labels { action } => match action {
             LabelsAction::List { project } => {
                 let data = client
-                    .get(&format!("workspaces/{workspace}/projects/{project}/labels/"))
+                    .get(&format!(
+                        "workspaces/{workspace}/projects/{project}/labels/"
+                    ))
                     .await?;
 
                 if json_mode {
@@ -287,7 +292,8 @@ async fn main() -> Result<()> {
                     table.set_header(vec![header("Name"), header("ID")]);
                     for label in results {
                         table.add_row(vec![
-                            Cell::new(label["name"].as_str().unwrap_or("(unnamed)")).fg(Color::White),
+                            Cell::new(label["name"].as_str().unwrap_or("(unnamed)"))
+                                .fg(Color::White),
                             Cell::new(label["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
                         ]);
                     }
@@ -298,7 +304,9 @@ async fn main() -> Result<()> {
         Command::Members { action } => match action {
             MembersAction::List { project } => {
                 let data = client
-                    .get(&format!("workspaces/{workspace}/projects/{project}/members/"))
+                    .get(&format!(
+                        "workspaces/{workspace}/projects/{project}/members/"
+                    ))
                     .await?;
 
                 if json_mode {
@@ -306,11 +314,9 @@ async fn main() -> Result<()> {
                 } else {
                     let results = match data.as_array() {
                         Some(arr) => arr,
-                        None => {
-                            data["results"]
-                                .as_array()
-                                .context("unexpected response format")?
-                        }
+                        None => data["results"]
+                            .as_array()
+                            .context("unexpected response format")?,
                     };
 
                     if results.is_empty() {
@@ -323,7 +329,8 @@ async fn main() -> Result<()> {
                     table.set_header(vec![header("Name"), header("ID")]);
                     for member in results {
                         table.add_row(vec![
-                            Cell::new(member["display_name"].as_str().unwrap_or("(unnamed)")).fg(Color::White),
+                            Cell::new(member["display_name"].as_str().unwrap_or("(unnamed)"))
+                                .fg(Color::White),
                             Cell::new(member["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
                         ]);
                     }
@@ -372,7 +379,12 @@ async fn main() -> Result<()> {
 
                     let mut table = Table::new();
                     table.load_preset(UTF8_BORDERS_ONLY);
-                    table.set_header(vec![header("#"), header("Name"), header("Priority"), header("ID")]);
+                    table.set_header(vec![
+                        header("#"),
+                        header("Name"),
+                        header("Priority"),
+                        header("ID"),
+                    ]);
                     for issue in results {
                         let prio = issue["priority"].as_str().unwrap_or("none");
                         table.add_row(vec![
@@ -411,20 +423,14 @@ async fn main() -> Result<()> {
                     println!("  {} {created}", cyan.apply_to("created: "));
 
                     if let Some(assignees) = data["assignees"].as_array() {
-                        let ids: Vec<&str> = assignees
-                            .iter()
-                            .filter_map(|a| a.as_str())
-                            .collect();
+                        let ids: Vec<&str> = assignees.iter().filter_map(|a| a.as_str()).collect();
                         if !ids.is_empty() {
                             println!("  {} {}", cyan.apply_to("assignees:"), ids.join(", "));
                         }
                     }
 
                     if let Some(labels) = data["labels"].as_array() {
-                        let ids: Vec<&str> = labels
-                            .iter()
-                            .filter_map(|l| l.as_str())
-                            .collect();
+                        let ids: Vec<&str> = labels.iter().filter_map(|l| l.as_str()).collect();
                         if !ids.is_empty() {
                             println!("  {} {}", cyan.apply_to("labels:  "), ids.join(", "));
                         }

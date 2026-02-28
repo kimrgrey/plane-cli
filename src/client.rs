@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::time::Duration;
@@ -14,10 +14,9 @@ pub struct Client {
 
 impl Client {
     pub fn new(settings: &Settings, json_mode: bool) -> Result<Self> {
-        let api_key = settings
-            .api_key
-            .as_deref()
-            .context("API key is required — set it via --api-key, PLANE_CLI_API_KEY, or config file")?;
+        let api_key = settings.api_key.as_deref().context(
+            "API key is required — set it via --api-key, PLANE_CLI_API_KEY, or config file",
+        )?;
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -97,7 +96,6 @@ impl Client {
         }
         result
     }
-
 }
 
 async fn handle_response(response: reqwest::Response) -> Result<serde_json::Value> {
@@ -184,7 +182,9 @@ mod tests {
             .and(path("/api/v1/items"))
             .and(query_param("per_page", "10"))
             .and(query_param("state", "active"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": []})))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": []})),
+            )
             .expect(1)
             .mount(&mock_server)
             .await;
@@ -204,7 +204,9 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/api/v1/issues"))
             .and(body_json(&body))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": "123"})))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": "123"})),
+            )
             .expect(1)
             .mount(&mock_server)
             .await;

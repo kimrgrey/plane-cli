@@ -68,8 +68,8 @@ fn merge_file(base: &mut serde_json::Value, path: &Path) -> Result<()> {
         }
     };
 
-    let overlay: serde_json::Value =
-        serde_json::from_str(&content).with_context(|| format!("invalid JSON in {}", path.display()))?;
+    let overlay: serde_json::Value = serde_json::from_str(&content)
+        .with_context(|| format!("invalid JSON in {}", path.display()))?;
 
     deep_merge(base, &overlay);
     Ok(())
@@ -173,7 +173,10 @@ mod tests {
         let mut base = serde_json::json!({"outer": {"a": 1, "b": 2}});
         let overlay = serde_json::json!({"outer": {"b": 99, "c": 3}});
         deep_merge(&mut base, &overlay);
-        assert_eq!(base, serde_json::json!({"outer": {"a": 1, "b": 99, "c": 3}}));
+        assert_eq!(
+            base,
+            serde_json::json!({"outer": {"a": 1, "b": 99, "c": 3}})
+        );
     }
 
     // ── merge_file ──
@@ -340,11 +343,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config_dir = dir.path().join("config");
         std::fs::create_dir_all(&config_dir).unwrap();
-        std::fs::write(
-            config_dir.join("settings.json"),
-            r#"{"timeout": 60}"#,
-        )
-        .unwrap();
+        std::fs::write(config_dir.join("settings.json"), r#"{"timeout": 60}"#).unwrap();
 
         temp_env::with_vars(
             [
@@ -373,11 +372,7 @@ mod tests {
             r#"{"timeout": 60, "base_url": "https://base.api"}"#,
         )
         .unwrap();
-        std::fs::write(
-            config_dir.join("settings.local.json"),
-            r#"{"timeout": 90}"#,
-        )
-        .unwrap();
+        std::fs::write(config_dir.join("settings.local.json"), r#"{"timeout": 90}"#).unwrap();
 
         temp_env::with_vars(
             [
@@ -401,11 +396,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config_dir = dir.path().join("config");
         std::fs::create_dir_all(&config_dir).unwrap();
-        std::fs::write(
-            config_dir.join("settings.json"),
-            r#"{"timeout": 60}"#,
-        )
-        .unwrap();
+        std::fs::write(config_dir.join("settings.json"), r#"{"timeout": 60}"#).unwrap();
 
         temp_env::with_vars(
             [
@@ -428,11 +419,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let config_dir = dir.path().join("config");
         std::fs::create_dir_all(&config_dir).unwrap();
-        std::fs::write(
-            config_dir.join("settings.json"),
-            r#"{"timeout": 60}"#,
-        )
-        .unwrap();
+        std::fs::write(config_dir.join("settings.json"), r#"{"timeout": 60}"#).unwrap();
 
         temp_env::with_vars(
             [

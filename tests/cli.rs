@@ -30,11 +30,15 @@ async fn test_projects_list_json() {
 
     plane_cmd()
         .args([
-            "--api-key", "test",
-            "--workspace", "test-ws",
-            "--base-url", &mock_server.uri(),
+            "--api-key",
+            "test",
+            "--workspace",
+            "test-ws",
+            "--base-url",
+            &mock_server.uri(),
             "--json",
-            "projects", "list",
+            "projects",
+            "list",
         ])
         .assert()
         .success()
@@ -56,10 +60,14 @@ async fn test_projects_list_table() {
 
     plane_cmd()
         .args([
-            "--api-key", "test",
-            "--workspace", "test-ws",
-            "--base-url", &mock_server.uri(),
-            "projects", "list",
+            "--api-key",
+            "test",
+            "--workspace",
+            "test-ws",
+            "--base-url",
+            &mock_server.uri(),
+            "projects",
+            "list",
         ])
         .assert()
         .success()
@@ -103,13 +111,19 @@ async fn test_issues_create_json() {
 
     plane_cmd()
         .args([
-            "--api-key", "test",
-            "--workspace", "test-ws",
-            "--base-url", &mock_server.uri(),
+            "--api-key",
+            "test",
+            "--workspace",
+            "test-ws",
+            "--base-url",
+            &mock_server.uri(),
             "--json",
-            "issues", "create",
-            "--project", "proj1",
-            "--title", "New Bug",
+            "issues",
+            "create",
+            "--project",
+            "proj1",
+            "--title",
+            "New Bug",
         ])
         .assert()
         .success()
