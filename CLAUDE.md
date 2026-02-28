@@ -11,9 +11,12 @@ plane-cli/
     settings.json        # Base settings (committed)
     settings.local.json  # Local overrides (git-ignored)
   src/
-    main.rs        # CLI entry point (clap derive), subcommand enums, output formatting
+    main.rs        # CLI entry point (clap derive), subcommand enums, arg dispatch
+    commands.rs    # Command handler functions (business logic + output formatting)
     settings.rs    # Settings struct & layered config loader
     client.rs      # HTTP client wrapper for Plane API
+  tests/
+    cli.rs         # Integration tests (assert_cmd + wiremock)
 ```
 
 ## Plane API documentation

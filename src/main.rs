@@ -1,14 +1,15 @@
 mod client;
+mod commands;
 mod settings;
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use client::Client;
-use comfy_table::{Cell, Color, Table, presets::UTF8_BORDERS_ONLY};
+use commands::{IssuesCreateParams, IssuesListParams};
 use settings::{CliOverrides, Settings};
 
 #[derive(Parser)]
-#[command(name = "plane", about = "CLI for Plane project management")]
+#[command(name = "plane", version, about = "CLI for Plane project management")]
 struct Cli {
     /// Plane API key
     #[arg(long)]
@@ -151,9 +152,9 @@ enum IssuesAction {
         #[arg(long)]
         state: Option<String>,
 
-        /// Priority: none, urgent, high, medium, low
-        #[arg(long)]
-        priority: Option<String>,
+        /// Priority level
+        #[arg(long, value_enum)]
+        priority: Option<Priority>,
 
         /// Assignee member IDs (can be repeated)
         #[arg(long)]
@@ -165,24 +166,39 @@ enum IssuesAction {
     },
 }
 
-fn header(name: &str) -> Cell {
-    Cell::new(name).fg(Color::Cyan)
+#[derive(Clone, ValueEnum)]
+enum Priority {
+    None,
+    Urgent,
+    High,
+    Medium,
+    Low,
 }
 
-fn priority_cell(priority: &str) -> Cell {
-    let color = match priority {
-        "urgent" => Color::Red,
-        "high" => Color::Yellow,
-        "medium" => Color::Blue,
-        "low" => Color::DarkGrey,
-        _ => Color::Reset,
-    };
-    Cell::new(priority).fg(color)
+impl Priority {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Urgent => "urgent",
+            Self::High => "high",
+            Self::Medium => "medium",
+            Self::Low => "low",
+        }
+    }
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    if let Err(err) = run(cli) {
+        let style = console::Style::new().red().bold();
+        eprintln!("{} {err:#}", style.apply_to("error:"));
+        std::process::exit(1);
+    }
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    let cli = Cli::parse();
+async fn run(cli: Cli) -> Result<()> {
     let json_mode = cli.json;
 
     let settings = Settings::load(CliOverrides {
@@ -201,141 +217,22 @@ async fn main() -> Result<()> {
     match cli.command {
         Command::Projects { action } => match action {
             ProjectsAction::List => {
-                let data = client
-                    .get(&format!("workspaces/{workspace}/projects/"))
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let results = data["results"]
-                        .as_array()
-                        .context("unexpected response format: missing 'results' array")?;
-
-                    if results.is_empty() {
-                        println!("No projects found.");
-                        return Ok(());
-                    }
-
-                    let mut table = Table::new();
-                    table.load_preset(UTF8_BORDERS_ONLY);
-                    table.set_header(vec![header("Name"), header("Identifier"), header("ID")]);
-                    for project in results {
-                        table.add_row(vec![
-                            Cell::new(project["name"].as_str().unwrap_or("(unnamed)"))
-                                .fg(Color::White),
-                            Cell::new(project["identifier"].as_str().unwrap_or("")),
-                            Cell::new(project["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
-                        ]);
-                    }
-                    println!("{table}");
-                }
+                commands::projects_list(&client, workspace, json_mode).await?;
             }
         },
         Command::States { action } => match action {
             StatesAction::List { project } => {
-                let data = client
-                    .get(&format!(
-                        "workspaces/{workspace}/projects/{project}/states/"
-                    ))
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let results = data["results"]
-                        .as_array()
-                        .context("unexpected response format: missing 'results' array")?;
-
-                    if results.is_empty() {
-                        println!("No states found.");
-                        return Ok(());
-                    }
-
-                    let mut table = Table::new();
-                    table.load_preset(UTF8_BORDERS_ONLY);
-                    table.set_header(vec![header("Name"), header("Group"), header("ID")]);
-                    for state in results {
-                        table.add_row(vec![
-                            Cell::new(state["name"].as_str().unwrap_or("(unnamed)"))
-                                .fg(Color::White),
-                            Cell::new(state["group"].as_str().unwrap_or("")),
-                            Cell::new(state["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
-                        ]);
-                    }
-                    println!("{table}");
-                }
+                commands::states_list(&client, workspace, &project, json_mode).await?;
             }
         },
         Command::Labels { action } => match action {
             LabelsAction::List { project } => {
-                let data = client
-                    .get(&format!(
-                        "workspaces/{workspace}/projects/{project}/labels/"
-                    ))
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let results = data["results"]
-                        .as_array()
-                        .context("unexpected response format: missing 'results' array")?;
-
-                    if results.is_empty() {
-                        println!("No labels found.");
-                        return Ok(());
-                    }
-
-                    let mut table = Table::new();
-                    table.load_preset(UTF8_BORDERS_ONLY);
-                    table.set_header(vec![header("Name"), header("ID")]);
-                    for label in results {
-                        table.add_row(vec![
-                            Cell::new(label["name"].as_str().unwrap_or("(unnamed)"))
-                                .fg(Color::White),
-                            Cell::new(label["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
-                        ]);
-                    }
-                    println!("{table}");
-                }
+                commands::labels_list(&client, workspace, &project, json_mode).await?;
             }
         },
         Command::Members { action } => match action {
             MembersAction::List { project } => {
-                let data = client
-                    .get(&format!(
-                        "workspaces/{workspace}/projects/{project}/members/"
-                    ))
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let results = match data.as_array() {
-                        Some(arr) => arr,
-                        None => data["results"]
-                            .as_array()
-                            .context("unexpected response format")?,
-                    };
-
-                    if results.is_empty() {
-                        println!("No members found.");
-                        return Ok(());
-                    }
-
-                    let mut table = Table::new();
-                    table.load_preset(UTF8_BORDERS_ONLY);
-                    table.set_header(vec![header("Name"), header("ID")]);
-                    for member in results {
-                        table.add_row(vec![
-                            Cell::new(member["display_name"].as_str().unwrap_or("(unnamed)"))
-                                .fg(Color::White),
-                            Cell::new(member["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
-                        ]);
-                    }
-                    println!("{table}");
-                }
+                commands::members_list(&client, workspace, &project, json_mode).await?;
             }
         },
         Command::Issues { action } => match action {
@@ -346,101 +243,22 @@ async fn main() -> Result<()> {
                 per_page,
                 cursor,
             } => {
-                let per_page_str = per_page.to_string();
-                let mut params: Vec<(&str, &str)> = vec![("per_page", &per_page_str)];
-                if let Some(ref s) = state {
-                    params.push(("state", s));
-                }
-                if let Some(ref a) = assignee {
-                    params.push(("assignee", a));
-                }
-                if let Some(ref c) = cursor {
-                    params.push(("cursor", c));
-                }
-
-                let data = client
-                    .get_with_params(
-                        &format!("workspaces/{workspace}/projects/{project}/issues/"),
-                        &params,
-                    )
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let results = data["results"]
-                        .as_array()
-                        .context("unexpected response format: missing 'results' array")?;
-
-                    if results.is_empty() {
-                        println!("No issues found.");
-                        return Ok(());
-                    }
-
-                    let mut table = Table::new();
-                    table.load_preset(UTF8_BORDERS_ONLY);
-                    table.set_header(vec![
-                        header("#"),
-                        header("Name"),
-                        header("Priority"),
-                        header("ID"),
-                    ]);
-                    for issue in results {
-                        let prio = issue["priority"].as_str().unwrap_or("none");
-                        table.add_row(vec![
-                            Cell::new(issue["sequence_id"].to_string()).fg(Color::White),
-                            Cell::new(issue["name"].as_str().unwrap_or("(unnamed)")),
-                            priority_cell(prio),
-                            Cell::new(issue["id"].as_str().unwrap_or("")).fg(Color::DarkGrey),
-                        ]);
-                    }
-                    println!("{table}");
-                }
+                commands::issues_list(
+                    &client,
+                    workspace,
+                    &IssuesListParams {
+                        project: &project,
+                        state: state.as_deref(),
+                        assignee: assignee.as_deref(),
+                        per_page,
+                        cursor: cursor.as_deref(),
+                    },
+                    json_mode,
+                )
+                .await?;
             }
             IssuesAction::Get { project, id } => {
-                let data = client
-                    .get(&format!(
-                        "workspaces/{workspace}/projects/{project}/issues/{id}/"
-                    ))
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let cyan = console::Style::new().cyan();
-                    let bold = console::Style::new().bold();
-                    let dim = console::Style::new().dim();
-
-                    let name = data["name"].as_str().unwrap_or("(unnamed)");
-                    let seq = &data["sequence_id"];
-                    let priority = data["priority"].as_str().unwrap_or("none");
-                    let state_id = data["state"].as_str().unwrap_or("");
-                    let created = data["created_at"].as_str().unwrap_or("");
-
-                    println!("{} {}", bold.apply_to(seq), bold.apply_to(name));
-                    println!("  {} {priority}", cyan.apply_to("priority:"));
-                    println!("  {} {state_id}", cyan.apply_to("state:   "));
-                    println!("  {} {created}", cyan.apply_to("created: "));
-
-                    if let Some(assignees) = data["assignees"].as_array() {
-                        let ids: Vec<&str> = assignees.iter().filter_map(|a| a.as_str()).collect();
-                        if !ids.is_empty() {
-                            println!("  {} {}", cyan.apply_to("assignees:"), ids.join(", "));
-                        }
-                    }
-
-                    if let Some(labels) = data["labels"].as_array() {
-                        let ids: Vec<&str> = labels.iter().filter_map(|l| l.as_str()).collect();
-                        if !ids.is_empty() {
-                            println!("  {} {}", cyan.apply_to("labels:  "), ids.join(", "));
-                        }
-                    }
-
-                    let desc = data["description_html"].as_str().unwrap_or("");
-                    if !desc.is_empty() {
-                        println!("\n  {}", dim.apply_to(desc));
-                    }
-                }
+                commands::issues_get(&client, workspace, &project, &id, json_mode).await?;
             }
             IssuesAction::Create {
                 project,
@@ -451,43 +269,21 @@ async fn main() -> Result<()> {
                 assignee,
                 label,
             } => {
-                let mut body = serde_json::json!({ "name": title });
-                let obj = body.as_object_mut().unwrap();
-
-                if let Some(desc) = description {
-                    obj.insert("description_html".to_string(), serde_json::json!(desc));
-                }
-                if let Some(s) = state {
-                    obj.insert("state".to_string(), serde_json::json!(s));
-                }
-                if let Some(p) = priority {
-                    obj.insert("priority".to_string(), serde_json::json!(p));
-                }
-                if !assignee.is_empty() {
-                    obj.insert("assignees".to_string(), serde_json::json!(assignee));
-                }
-                if !label.is_empty() {
-                    obj.insert("labels".to_string(), serde_json::json!(label));
-                }
-
-                let data = client
-                    .post(
-                        &format!("workspaces/{workspace}/projects/{project}/issues/"),
-                        &body,
-                    )
-                    .await?;
-
-                if json_mode {
-                    println!("{}", serde_json::to_string_pretty(&data)?);
-                } else {
-                    let id = data["id"].as_str().unwrap_or("");
-                    let seq = &data["sequence_id"];
-                    let name = data["name"].as_str().unwrap_or("");
-                    let green = console::Style::new().green().bold();
-                    let dim = console::Style::new().dim();
-                    println!("{} #{} {}", green.apply_to("Created"), seq, name);
-                    println!("  {}", dim.apply_to(id));
-                }
+                commands::issues_create(
+                    &client,
+                    workspace,
+                    &IssuesCreateParams {
+                        project: &project,
+                        title: &title,
+                        description: description.as_deref(),
+                        state: state.as_deref(),
+                        priority: priority.as_ref().map(Priority::as_str),
+                        assignees: &assignee,
+                        labels: &label,
+                    },
+                    json_mode,
+                )
+                .await?;
             }
         },
     }
