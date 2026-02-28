@@ -43,10 +43,12 @@ cargo run -- <command>
 
 Layered configuration (each layer overrides the previous):
 1. Hardcoded defaults (`Settings::default()`)
-2. `config/settings.json` — base settings
-3. `config/settings.local.json` — local overrides (git-ignored)
-4. Environment variables: `PLANE_API_KEY`, `PLANE_BASE_URL`, `PLANE_WORKSPACE`, `PLANE_TIMEOUT`
+2. `{home}/config/settings.json` — base settings
+3. `{home}/config/settings.local.json` — local overrides (git-ignored)
+4. Environment variables: `PLANE_CLI_API_KEY`, `PLANE_CLI_BASE_URL`, `PLANE_CLI_WORKSPACE`, `PLANE_CLI_TIMEOUT`
 5. CLI arguments (`--api-key`, `--base-url`, `--workspace`, `--timeout`)
+
+`{home}` is `PLANE_CLI_HOME` env var if set, otherwise the current directory.
 
 ## Dependencies
 

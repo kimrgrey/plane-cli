@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
@@ -36,11 +36,15 @@ impl Settings {
         let mut value = serde_json::to_value(Settings::default())
             .context("failed to serialize default settings")?;
 
+        let home = home_dir();
+
+        let config_dir = home.join("config");
+
         // Layer 2: config/settings.json
-        merge_file(&mut value, Path::new("config/settings.json"))?;
+        merge_file(&mut value, &config_dir.join("settings.json"))?;
 
         // Layer 3: config/settings.local.json
-        merge_file(&mut value, Path::new("config/settings.local.json"))?;
+        merge_file(&mut value, &config_dir.join("settings.local.json"))?;
 
         // Layer 4: environment variables
         merge_env(&mut value);
@@ -71,19 +75,27 @@ fn merge_file(base: &mut serde_json::Value, path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Returns the settings home directory.
+/// `PLANE_CLI_HOME` env var if set, otherwise the current directory.
+fn home_dir() -> PathBuf {
+    std::env::var("PLANE_CLI_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."))
+}
+
 fn merge_env(base: &mut serde_json::Value) {
     let map = base.as_object_mut().expect("base must be an object");
 
-    if let Ok(v) = std::env::var("PLANE_API_KEY") {
+    if let Ok(v) = std::env::var("PLANE_CLI_API_KEY") {
         map.insert("api_key".to_string(), serde_json::Value::String(v));
     }
-    if let Ok(v) = std::env::var("PLANE_BASE_URL") {
+    if let Ok(v) = std::env::var("PLANE_CLI_BASE_URL") {
         map.insert("base_url".to_string(), serde_json::Value::String(v));
     }
-    if let Ok(v) = std::env::var("PLANE_WORKSPACE") {
+    if let Ok(v) = std::env::var("PLANE_CLI_WORKSPACE") {
         map.insert("workspace".to_string(), serde_json::Value::String(v));
     }
-    if let Ok(v) = std::env::var("PLANE_TIMEOUT") {
+    if let Ok(v) = std::env::var("PLANE_CLI_TIMEOUT") {
         if let Ok(n) = v.parse::<u64>() {
             map.insert("timeout".to_string(), serde_json::json!(n));
         }
