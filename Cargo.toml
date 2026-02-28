@@ -10,6 +10,7 @@ authors = ["Sergei Tsvetkov <tsvetkov@hey.com>"]
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+comfy-table = "7"
 console = "0.15"
 indicatif = "0.17"
 serde = { version = "1", features = ["derive"] }

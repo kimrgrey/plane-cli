@@ -16,6 +16,10 @@ plane-cli/
     client.rs      # HTTP client wrapper for Plane API
 ```
 
+## Plane API documentation
+
+https://github.com/makeplane/developer-docs/tree/master/docs/api-reference
+
 ## Key conventions
 
 - All errors use `anyhow` for context-rich error chains

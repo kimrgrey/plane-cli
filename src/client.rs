@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::time::Duration;
 
@@ -7,14 +8,15 @@ use crate::settings::Settings;
 pub struct Client {
     http: reqwest::Client,
     base_url: String,
+    show_spinner: bool,
 }
 
 impl Client {
-    pub fn new(settings: &Settings) -> Result<Self> {
+    pub fn new(settings: &Settings, json_mode: bool) -> Result<Self> {
         let api_key = settings
             .api_key
             .as_deref()
-            .context("API key is required — set it via --api-key, PLANE_API_KEY, or config file")?;
+            .context("API key is required — set it via --api-key, PLANE_CLI_API_KEY, or config file")?;
 
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -30,16 +32,56 @@ impl Client {
 
         let base_url = format!("{}/api/v1", settings.base_url.trim_end_matches('/'));
 
-        Ok(Self { http, base_url })
+        Ok(Self {
+            http,
+            base_url,
+            show_spinner: !json_mode,
+        })
+    }
+
+    fn spinner(&self, message: &str) -> Option<ProgressBar> {
+        if !self.show_spinner {
+            return None;
+        }
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&["   ", ".  ", ".. ", "...", " ..", "  .", "   "])
+                .template("{spinner} {msg}")
+                .unwrap(),
+        );
+        pb.set_message(message.to_string());
+        pb.enable_steady_tick(Duration::from_millis(120));
+        Some(pb)
     }
 
     pub async fn get(&self, path: &str) -> Result<serde_json::Value> {
+        self.get_with_params(path, &[]).await
+    }
+
+    pub async fn get_with_params(
+        &self,
+        path: &str,
+        params: &[(&str, &str)],
+    ) -> Result<serde_json::Value> {
+        let spinner = self.spinner("Fetching...");
         let url = format!("{}/{}", self.base_url, path.trim_start_matches('/'));
-        let response = self.http.get(&url).send().await.context("GET request failed")?;
-        handle_response(response).await
+        let response = self
+            .http
+            .get(&url)
+            .query(params)
+            .send()
+            .await
+            .context("GET request failed")?;
+        let result = handle_response(response).await;
+        if let Some(pb) = spinner {
+            pb.finish_and_clear();
+        }
+        result
     }
 
     pub async fn post(&self, path: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+        let spinner = self.spinner("Sending...");
         let url = format!("{}/{}", self.base_url, path.trim_start_matches('/'));
         let response = self
             .http
@@ -48,10 +90,15 @@ impl Client {
             .send()
             .await
             .context("POST request failed")?;
-        handle_response(response).await
+        let result = handle_response(response).await;
+        if let Some(pb) = spinner {
+            pb.finish_and_clear();
+        }
+        result
     }
 
     pub async fn patch(&self, path: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+        let spinner = self.spinner("Updating...");
         let url = format!("{}/{}", self.base_url, path.trim_start_matches('/'));
         let response = self
             .http
@@ -60,10 +107,15 @@ impl Client {
             .send()
             .await
             .context("PATCH request failed")?;
-        handle_response(response).await
+        let result = handle_response(response).await;
+        if let Some(pb) = spinner {
+            pb.finish_and_clear();
+        }
+        result
     }
 
     pub async fn delete(&self, path: &str) -> Result<serde_json::Value> {
+        let spinner = self.spinner("Deleting...");
         let url = format!("{}/{}", self.base_url, path.trim_start_matches('/'));
         let response = self
             .http
@@ -71,7 +123,11 @@ impl Client {
             .send()
             .await
             .context("DELETE request failed")?;
-        handle_response(response).await
+        let result = handle_response(response).await;
+        if let Some(pb) = spinner {
+            pb.finish_and_clear();
+        }
+        result
     }
 }
 
