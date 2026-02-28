@@ -123,4 +123,4 @@ plane-cli --json issues list -p <PROJECT_ID> | jq '.results[] | {name, priority}
 
 ## License
 
-MIT
+[MIT](LICENSE)
