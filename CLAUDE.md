@@ -36,6 +36,7 @@ https://github.com/makeplane/developer-docs/tree/master/docs/api-reference
 - Always ask before using `--admin` flag when merging PRs — it bypasses branch protection checks
 - Try to keep branch names short but readable
 - Always remove previously added but now unused code
+- Before committing, always run `cargo fmt` and `cargo clippy --all-targets -- -D warnings` and fix any issues
 
 ## Build & run
 
