@@ -24,6 +24,7 @@ https://github.com/makeplane/developer-docs/tree/master/docs/api-reference
 
 - All errors use `anyhow` for context-rich error chains
 - Two output modes: human (colored, spinners) and JSON (`--json` flag)
+- Only add HTTP client methods (get, post, patch, delete, etc.) that are actually used by a CLI command — do not add speculative or placeholder endpoints
 
 ## Git & PR conventions
 

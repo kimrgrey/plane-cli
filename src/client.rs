@@ -98,38 +98,6 @@ impl Client {
         result
     }
 
-    pub async fn patch(&self, path: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
-        let spinner = self.spinner("Updating...");
-        let url = format!("{}/{}", self.base_url, path.trim_start_matches('/'));
-        let response = self
-            .http
-            .patch(&url)
-            .json(body)
-            .send()
-            .await
-            .context("PATCH request failed")?;
-        let result = handle_response(response).await;
-        if let Some(pb) = spinner {
-            pb.finish_and_clear();
-        }
-        result
-    }
-
-    pub async fn delete(&self, path: &str) -> Result<serde_json::Value> {
-        let spinner = self.spinner("Deleting...");
-        let url = format!("{}/{}", self.base_url, path.trim_start_matches('/'));
-        let response = self
-            .http
-            .delete(&url)
-            .send()
-            .await
-            .context("DELETE request failed")?;
-        let result = handle_response(response).await;
-        if let Some(pb) = spinner {
-            pb.finish_and_clear();
-        }
-        result
-    }
 }
 
 async fn handle_response(response: reqwest::Response) -> Result<serde_json::Value> {
@@ -158,7 +126,7 @@ async fn handle_response(response: reqwest::Response) -> Result<serde_json::Valu
 mod tests {
     use super::*;
     use crate::settings::Settings;
-    use wiremock::matchers::{header, method, path, query_param, body_json};
+    use wiremock::matchers::{body_json, header, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn test_settings(base_url: &str) -> Settings {
@@ -244,38 +212,6 @@ mod tests {
         let client = Client::new(&test_settings(&mock_server.uri()), true).unwrap();
         let result = client.post("issues", &body).await.unwrap();
         assert_eq!(result["id"], "123");
-    }
-
-    #[tokio::test]
-    async fn test_patch_sends_json_body() {
-        let mock_server = MockServer::start().await;
-        let body = serde_json::json!({"name": "Updated"});
-        Mock::given(method("PATCH"))
-            .and(path("/api/v1/issues/123"))
-            .and(body_json(&body))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": "123", "name": "Updated"})))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
-
-        let client = Client::new(&test_settings(&mock_server.uri()), true).unwrap();
-        let result = client.patch("issues/123", &body).await.unwrap();
-        assert_eq!(result["name"], "Updated");
-    }
-
-    #[tokio::test]
-    async fn test_delete_sends_request() {
-        let mock_server = MockServer::start().await;
-        Mock::given(method("DELETE"))
-            .and(path("/api/v1/issues/123"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
-
-        let client = Client::new(&test_settings(&mock_server.uri()), true).unwrap();
-        let result = client.delete("issues/123").await.unwrap();
-        assert_eq!(result, serde_json::json!({}));
     }
 
     // ── Error handling ──
