@@ -95,10 +95,10 @@ fn merge_env(base: &mut serde_json::Value) {
     if let Ok(v) = std::env::var("PLANE_CLI_WORKSPACE") {
         map.insert("workspace".to_string(), serde_json::Value::String(v));
     }
-    if let Ok(v) = std::env::var("PLANE_CLI_TIMEOUT") {
-        if let Ok(n) = v.parse::<u64>() {
-            map.insert("timeout".to_string(), serde_json::json!(n));
-        }
+    if let Ok(v) = std::env::var("PLANE_CLI_TIMEOUT")
+        && let Ok(n) = v.parse::<u64>()
+    {
+        map.insert("timeout".to_string(), serde_json::json!(n));
     }
 }
 

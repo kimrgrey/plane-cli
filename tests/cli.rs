@@ -4,7 +4,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn plane_cmd() -> assert_cmd::Command {
-    cargo_bin_cmd!("plane-cli").into()
+    cargo_bin_cmd!("plane-cli")
 }
 
 #[test]
