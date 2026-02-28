@@ -2,6 +2,10 @@
 
 CLI for [Plane](https://plane.so) project management.
 
+## Why
+
+This CLI is designed to be used by AI coding agents (like Claude) to automate routine project management tasks: creating follow-up issues after implementing a feature (e.g. frontend issues after backend work), moving issues between statuses, assigning work, adding labels, and other repetitive operations that shouldn't require opening a browser. The `--json` mode makes it easy for agents to parse responses, while the human-readable mode with colored tables and spinners keeps it pleasant for manual use too.
+
 ## Installation
 
 ```bash
